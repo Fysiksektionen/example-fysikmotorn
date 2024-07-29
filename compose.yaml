@@ -1,0 +1,52 @@
+services:
+  # Main Server
+  nginx:
+    container_name: nginx
+    image: docker.io/nginx:1.25.4-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - wordpress-f.kth.se
+      - example-app
+    volumes:
+      - ./services/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./services/nginx/certificates:/etc/nginx/certificates
+
+      - ./services/f.kth.se/wordpress:/f.kth.se/wordpress
+
+      - ./services/example-app/static:/f.kth.se/example-app
+
+      - ./services/misc/f.png:/f.kth.se/f.png
+
+  # f.kth.se Wordpress and Database
+  mariadb-f.kth.se:
+    container_name: mariadb-f.kth.se
+    image: docker.io/mariadb
+    restart: unless-stopped
+    volumes:
+      - ./services/f.kth.se/mariadb:/var/lib/mysql
+    env_file: ./services/f.kth.se/.env
+    environment:
+      MARIADB_DATABASE: fkthse
+
+  wordpress-f.kth.se:
+    container_name: wordpress-f.kth.se
+    image: docker.io/wordpress:6.4.3-php8.1-fpm-alpine
+    restart: unless-stopped
+    volumes:
+      - ./services/f.kth.se/wordpress:/var/www/html/
+    depends_on:
+      - mariadb-f.kth.se
+    env_file: ./services/f.kth.se/.env
+    environment:
+      WORDPRESS_DB_HOST: mariadb-f.kth.se
+      WORDPRESS_DB_NAME: fkthse
+      WORDPRESS_TABLE_PREFIX: wp_
+
+  ## Example app
+  example-app:
+    container_name: example-app
+    image: ghcr.io/fysiksektionen/example-app:${EXAMPLE_APP_VERSION}
+    init: true
